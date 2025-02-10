@@ -13,10 +13,12 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -34,6 +36,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.zybooks.petadoption.data.Pet
 import com.zybooks.petadoption.data.PetDataSource
 import com.zybooks.petadoption.data.PetGender
@@ -41,21 +44,22 @@ import com.zybooks.petadoption.ui.theme.PetAdoptionTheme
 import kotlinx.serialization.Serializable
 
 sealed class Routes {
-   @kotlinx.serialization.Serializable
+   @Serializable
    data object List
 
-   @kotlinx.serialization.Serializable
-   data object Detail
+   @Serializable
+   data class Detail(
+      val petId: Int
+   )
 
    @Serializable
-   data object Adopt
+   data class Adopt(
+      val petId: Int
+   )
 }
 
-
 @Composable
-fun PetApp(
-   petViewModel: PetViewModel = viewModel()
-) {
+fun PetApp() {
    val navController = rememberNavController()
 
    NavHost(
@@ -64,49 +68,73 @@ fun PetApp(
    ) {
       composable<Routes.List> {
          ListScreen(
-            petList = petViewModel.petList,
             onImageClick = { pet ->
-               petViewModel.selectedPet = pet
-               navController.navigate(Routes.Detail)
+               navController.navigate(
+                  Routes.Detail(pet.id)
+               )
             }
          )
       }
-      composable<Routes.Detail> {
+      composable<Routes.Detail> { backstackEntry ->
+         val details: Routes.Detail = backstackEntry.toRoute()
+
          DetailScreen(
-            pet = petViewModel.selectedPet,
+            petId = details.petId,
             onAdoptClick = {
-               navController.navigate(Routes.Adopt)
+               navController.navigate(
+                  Routes.Adopt(details.petId)
+               )
             },
+            onUpClick = {
+               navController.navigateUp()
+            }
          )
       }
-      composable<Routes.Adopt> {
+      composable<Routes.Adopt> { backstackEntry ->
+         val adopt: Routes.Adopt = backstackEntry.toRoute()
+
          AdoptScreen(
-            pet = petViewModel.selectedPet,
+            petId = adopt.petId,
+            onUpClick = {
+               navController.navigateUp()
+            }
          )
       }
    }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PetAppBar(
    title: String,
-   modifier: Modifier = Modifier
-) {
+   modifier: Modifier = Modifier,
+   canNavigateBack: Boolean = false,
+   onUpClick: () -> Unit = { },
+
+   ) {
    TopAppBar(
       title = { Text(title) },
       colors = TopAppBarDefaults.topAppBarColors(
          containerColor = MaterialTheme.colorScheme.primaryContainer
       ),
-      modifier = modifier
+      modifier = modifier,
+      navigationIcon = {
+         if (canNavigateBack) {
+            IconButton(onClick = onUpClick) {
+               Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+            }
+         }
+      }
+
    )
 }
 
 @Composable
 fun ListScreen(
-   petList: List<Pet>,
    onImageClick: (Pet) -> Unit,
-   modifier: Modifier = Modifier
+   modifier: Modifier = Modifier,
+   viewModel: ListViewModel = viewModel()
 ) {
    Scaffold(
       topBar = {
@@ -120,7 +148,7 @@ fun ListScreen(
          contentPadding = PaddingValues(0.dp),
          modifier = modifier.padding(innerPadding)
       ) {
-         items(petList) { pet ->
+         items(viewModel.petList) { pet ->
             Image(
                painter = painterResource(id = pet.imageId),
                contentDescription = "${pet.type} ${pet.gender}",
@@ -136,18 +164,23 @@ fun ListScreen(
 
 @Composable
 fun DetailScreen(
-   pet: Pet,
+   petId: Int,
    onAdoptClick: () -> Unit,
    modifier: Modifier = Modifier,
+   viewModel: DetailViewModel = viewModel(),
    onUpClick: () -> Unit = { }
 ) {
+   val pet = viewModel.getPet(petId)
    val gender = if (pet.gender == PetGender.MALE) "Male" else "Female"
 
    Scaffold(
       topBar = {
          PetAppBar(
             title = "Details",
+            canNavigateBack = true,
+            onUpClick = onUpClick
          )
+
       }
    ) { innerPadding ->
       Column(
@@ -193,28 +226,23 @@ fun DetailScreen(
 }
 
 
-@Preview
-@Composable
-fun PreviewDetailScreen() {
-   val pet = PetDataSource().loadPets()[0]
-   PetAdoptionTheme {
-      DetailScreen(
-         pet = pet,
-         onAdoptClick = { }
-      )
-   }
-}
+
 
 @Composable
 fun AdoptScreen(
-   pet: Pet,
+   petId: Int,
    modifier: Modifier = Modifier,
+   viewModel: AdoptViewModel = viewModel(),
    onUpClick: () -> Unit = { }
 ) {
+   val pet = viewModel.getPet(petId)
    Scaffold(
       topBar = {
          PetAppBar(
             title = "Thank You!",
+            canNavigateBack = true,
+            onUpClick = onUpClick
+
          )
       }
    ) { innerPadding ->
@@ -249,11 +277,3 @@ fun AdoptScreen(
    }
 }
 
-@Preview
-@Composable
-fun PreviewAdoptScreen() {
-   val pet = PetDataSource().loadPets()[0]
-   PetAdoptionTheme {
-      AdoptScreen(pet)
-   }
-}
