@@ -1,37 +1,52 @@
 package com.zybooks.petadoption.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -41,6 +56,16 @@ import com.zybooks.petadoption.data.Pet
 import com.zybooks.petadoption.data.PetDataSource
 import com.zybooks.petadoption.data.PetGender
 import com.zybooks.petadoption.ui.theme.PetAdoptionTheme
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.Dialog
+
 import kotlinx.serialization.Serializable
 
 sealed class Routes {
@@ -48,19 +73,27 @@ sealed class Routes {
    data object List
 
    @Serializable
-   data class Detail(
-      val petId: Int
+   data class Settings(
+      val selectedLanguage: String,
+      val selectedDifficulty: String
    )
 
    @Serializable
-   data class Adopt(
-      val petId: Int
+   data class Word(
+      val selectedLanguage: String,
+      val selectedDifficulty: String
    )
+   @Serializable
+   data object Archive
+
+
 }
 
 @Composable
 fun PetApp() {
    val navController = rememberNavController()
+   val wordViewModel: WordScreenViewModel = viewModel()
+
 
    NavHost(
       navController = navController,
@@ -68,36 +101,34 @@ fun PetApp() {
    ) {
       composable<Routes.List> {
          ListScreen(
-            onImageClick = { pet ->
-               navController.navigate(
-                  Routes.Detail(pet.id)
-               )
+            onButtonClick = {
+               navController.navigate(Routes.Settings(selectedLanguage = "Spanish", selectedDifficulty = "Intermediate"))
             }
          )
       }
-      composable<Routes.Detail> { backstackEntry ->
-         val details: Routes.Detail = backstackEntry.toRoute()
+      composable<Routes.Settings> { backstackEntry ->
+         val settings: Routes.Settings = backstackEntry.toRoute()
 
-         DetailScreen(
-            petId = details.petId,
-            onAdoptClick = {
-               navController.navigate(
-                  Routes.Adopt(details.petId)
-               )
-            },
-            onUpClick = {
-               navController.navigateUp()
+         SettingsScreen(viewModel = wordViewModel,
+            onButtonClick = {
+               navController.navigate(Routes.Word(selectedLanguage = "Spanish", selectedDifficulty = "Intermediate"))
             }
          )
       }
-      composable<Routes.Adopt> { backstackEntry ->
-         val adopt: Routes.Adopt = backstackEntry.toRoute()
+      composable<Routes.Word> { backstackEntry ->
+         val word: Routes.Word = backstackEntry.toRoute()
+         val selectedLanguage = backstackEntry.arguments?.getString("selectedLanguage")
 
-         AdoptScreen(
-            petId = adopt.petId,
-            onUpClick = {
-               navController.navigateUp()
-            }
+
+         WordScreen(
+           viewModel = wordViewModel, onNextClick = {navController.navigate(Routes.Archive)}
+         )
+      }
+      composable<Routes.Archive> { backstackEntry ->
+         val archive: Routes.Archive = backstackEntry.toRoute()
+
+         ArchiveScreen(
+            viewModel = wordViewModel
          )
       }
    }
@@ -132,30 +163,107 @@ fun PetAppBar(
 
 @Composable
 fun ListScreen(
-   onImageClick: (Pet) -> Unit,
+   onButtonClick: () -> Unit,
    modifier: Modifier = Modifier,
-   viewModel: ListViewModel = viewModel()
+
 ) {
-   Scaffold(
-      topBar = {
-         PetAppBar(
-            title = "Find a Friend"
+   Box(modifier = Modifier.fillMaxSize()){
+      Text("pidgin", Modifier.align(Alignment.Center), fontSize = 25.sp)
+      Button(onClick=onButtonClick, modifier = Modifier.align(Alignment.BottomCenter).padding( 32.dp) ) {
+         Text("get started")
+      }
+   }
+}
+
+
+
+
+@Composable
+fun SettingsScreen(
+   onButtonClick: () -> Unit,
+   modifier: Modifier = Modifier,
+   viewModel: WordScreenViewModel = viewModel(),
+) {
+   val language = viewModel.selectedLanguage
+   val difficulty = viewModel.selectedDifficulty
+
+   Box(
+      modifier = Modifier.fillMaxSize(),
+      contentAlignment = Alignment.TopStart
+   ) {
+      Column(
+         modifier = Modifier.wrapContentSize().padding(16.dp),
+         verticalArrangement = Arrangement.spacedBy(16.dp)
+      ) {
+         DropdownRow(
+            text = language,
+            expanded = viewModel.languageDropdownExpanded,
+            onExpand = { viewModel.languageDropdownExpanded = true },
+            onDismiss = { viewModel.languageDropdownExpanded = false },
+            options = viewModel.languages,
+            onSelect = { viewModel.selectedLanguage = it },
+            header = "Select your language"
+         )
+
+         DropdownRow(
+            text = difficulty,
+            expanded = viewModel.difficultyDropdownExpanded,
+            onExpand = { viewModel.difficultyDropdownExpanded = true },
+            onDismiss = { viewModel.difficultyDropdownExpanded = false },
+            options = viewModel.difficulties,
+            onSelect = { viewModel.selectedDifficulty = it },
+            header = "Select your level"
          )
       }
-   ) { innerPadding ->
-      LazyVerticalGrid(
-         columns = GridCells.Adaptive(minSize = 128.dp),
-         contentPadding = PaddingValues(0.dp),
-         modifier = modifier.padding(innerPadding)
+      Button(onClick=onButtonClick, modifier = Modifier.align(Alignment.BottomCenter).padding( 32.dp) ) {
+         Text("begin!")
+      }
+   }
+
+}
+
+@Composable
+fun DropdownRow(
+   header: String,
+   text: String,
+   expanded: Boolean,
+   onExpand: () -> Unit,
+   onDismiss: () -> Unit,
+   options: Array<String>,
+   onSelect: (String) -> Unit
+) {
+
+   Box(modifier = Modifier.fillMaxWidth().padding(bottom = 200.dp)) {
+      Text(modifier = Modifier.padding(10.dp).fillMaxWidth(), text = header)
+      Row(
+         modifier = Modifier.fillMaxWidth().padding(8.dp),
+         verticalAlignment = Alignment.CenterVertically,
+         horizontalArrangement = Arrangement.SpaceBetween
       ) {
-         items(viewModel.petList) { pet ->
-            Image(
-               painter = painterResource(id = pet.imageId),
-               contentDescription = "${pet.type} ${pet.gender}",
-               modifier = Modifier.clickable(
-                  onClick = { onImageClick(pet) },
-                  onClickLabel = "Select the pet"
-               )
+         TextButton(
+            onClick = onExpand,
+            modifier = Modifier.weight(1f).padding(top = 30.dp) // Ensures button takes most of the space
+         ) {
+            Text(text, textAlign = TextAlign.Left)
+         }
+
+         IconButton(onClick = onExpand) {
+            Icon(imageVector = Icons.Filled.ArrowDropDown, contentDescription = "Dropdown")
+         }
+      }
+
+      DropdownMenu(
+         expanded = expanded,
+         onDismissRequest = onDismiss,
+         modifier = Modifier.fillMaxWidth()
+      ) {
+         options.forEach { option ->
+            DropdownMenuItem(
+               text = { Text(option) },
+               onClick = {
+                  onSelect(option)
+                  onDismiss()
+               }
             )
          }
       }
@@ -163,64 +271,126 @@ fun ListScreen(
 }
 
 @Composable
-fun DetailScreen(
-   petId: Int,
-   onAdoptClick: () -> Unit,
-   modifier: Modifier = Modifier,
-   viewModel: DetailViewModel = viewModel(),
-   onUpClick: () -> Unit = { }
-) {
-   val pet = viewModel.getPet(petId)
-   val gender = if (pet.gender == PetGender.MALE) "Male" else "Female"
+fun WordCard(word: String, onButtonClick: () -> Unit, isSelected: Boolean){
+   TextButton(onClick = onButtonClick){
+      Row(modifier = Modifier.width(280.dp).background(color = Color.Cyan).padding(15.dp).height(40.dp), horizontalArrangement = Arrangement.SpaceBetween){
+         Text(word)
+         Icon(imageVector = Icons.Filled.Star, contentDescription = "Dropdown", tint = if (isSelected) Color.Yellow else Color.Gray)
+      }
+   }
 
-   Scaffold(
-      topBar = {
-         PetAppBar(
-            title = "Details",
-            canNavigateBack = true,
-            onUpClick = onUpClick
-         )
+}
+
+@Composable
+fun WordScreen(viewModel: WordScreenViewModel = viewModel(), onNextClick: () -> Unit ={}) {
+   LaunchedEffect(viewModel.selectedLanguage, viewModel.selectedDifficulty) {
+      viewModel.getWords()
+   }
+   Column(
+      modifier = Modifier
+         .fillMaxSize()
+         .padding(16.dp),
+      verticalArrangement = Arrangement.Top,
+      horizontalAlignment = Alignment.CenterHorizontally
+   ) {
+
+      Row(
+         modifier = Modifier.fillMaxWidth(),
+         verticalAlignment = Alignment.CenterVertically,
+         horizontalArrangement = Arrangement.SpaceBetween
+      ) {
+         Text("round one", fontSize = 30.sp)
+         Button(onClick = onNextClick) {
+            Text("next")
+         }
+      }
+
+      Spacer(modifier = Modifier.height(36.dp))
+
+      // Column for word cards
+      Column(
+         verticalArrangement = Arrangement.spacedBy(8.dp),
+         horizontalAlignment = Alignment.CenterHorizontally
+      ) {
+         viewModel.words.map { word ->
+            WordCard(
+               word = word.word,
+               onButtonClick = { viewModel.selectWord(word.word)
+                                 viewModel.selectedWords.add(word)
+                               },
+               isSelected = viewModel.checkIsSelected(word.word)
+            )
+         }
+      }
+   }
+}
+@Composable
+fun ArchiveScreen(viewModel: WordScreenViewModel = viewModel()) {
+   var selectedWord by remember { mutableStateOf<Word?>(null) }
+   Column(
+      modifier = Modifier
+         .fillMaxSize()
+         .padding(16.dp),
+      verticalArrangement = Arrangement.Top,
+      horizontalAlignment = Alignment.CenterHorizontally
+   ) {
+
+      Row(
+         modifier = Modifier.fillMaxWidth(),
+         verticalAlignment = Alignment.CenterVertically,
+         horizontalArrangement = Arrangement.SpaceBetween
+      ) {
+         Text("archive", fontSize = 30.sp)
 
       }
-   ) { innerPadding ->
+
+      Spacer(modifier = Modifier.height(36.dp))
+
+      // Column for word cards
       Column(
-         modifier = modifier.padding(innerPadding)
+         verticalArrangement = Arrangement.spacedBy(8.dp),
+         horizontalAlignment = Alignment.CenterHorizontally
       ) {
-         Image(
-            painter = painterResource(pet.imageId),
-            contentDescription = pet.name,
-            contentScale = ContentScale.FillWidth
-         )
-         Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = modifier.padding(6.dp)
-         ) {
-            Row(
-               horizontalArrangement = Arrangement.SpaceBetween,
-               verticalAlignment = Alignment.CenterVertically,
-               modifier = modifier.fillMaxWidth()
+         println("Selected words: ")
+         println(viewModel.selectedWords)
+         viewModel.selectedWords.map { word ->
+            WordCard(
+               word = word.word,
+               onButtonClick = { selectedWord = word},
+               isSelected = true
+            )
+         }
+      }
+      if (selectedWord != null) {
+         Dialog(onDismissRequest = { selectedWord = null }) {
+            Box(
+               modifier = Modifier
+                  .fillMaxWidth(0.8f)  // Set width to 80% of screen
+                  .fillMaxHeight(0.5f) // Set height to 50% of screen
+                  .background(Color.White, shape = RoundedCornerShape(16.dp))
+                  .padding(16.dp)
             ) {
-               Text(
-                  text = pet.name,
-                  style = MaterialTheme.typography.headlineMedium
-               )
-               Button(onClick = onAdoptClick) {
-                  Text("Adopt Me!")
+               Column(
+                  horizontalAlignment = Alignment.CenterHorizontally,
+                  modifier = Modifier.fillMaxSize()
+               ) {
+                  selectedWord?.word?.let { Text(text = it, fontSize = 24.sp, fontWeight = FontWeight.Bold) }
+                  Spacer(modifier = Modifier.height(8.dp))
+                  Text(text = selectedWord?.definition ?: "", fontSize = 18.sp)
+
+                  // Pushes everything above it up, moving the button to the bottom
+                  Spacer(modifier = Modifier.weight(1f))
+
+                  Button(
+                     onClick = { selectedWord = null },
+                     modifier = Modifier.fillMaxWidth() // Ensures button is centered and takes full width
+                  ) {
+                     Text("Close")
+                  }
                }
             }
-            Text(
-               text = "Gender: $gender",
-               style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-               text = "Age: ${pet.age}",
-               style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-               text = pet.description,
-               style = MaterialTheme.typography.bodyMedium
-            )
          }
+
       }
    }
 }
@@ -228,52 +398,4 @@ fun DetailScreen(
 
 
 
-@Composable
-fun AdoptScreen(
-   petId: Int,
-   modifier: Modifier = Modifier,
-   viewModel: AdoptViewModel = viewModel(),
-   onUpClick: () -> Unit = { }
-) {
-   val pet = viewModel.getPet(petId)
-   Scaffold(
-      topBar = {
-         PetAppBar(
-            title = "Thank You!",
-            canNavigateBack = true,
-            onUpClick = onUpClick
-
-         )
-      }
-   ) { innerPadding ->
-      Column(
-         modifier = modifier.padding(innerPadding)
-      ) {
-         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-               painter = painterResource(pet.imageId),
-               contentDescription = pet.name,
-               modifier = modifier.size(150.dp)
-            )
-            Text(
-               text = "Thank you for adopting ${pet.name}!",
-               modifier = modifier.padding(horizontal = 28.dp),
-               textAlign = TextAlign.Center,
-               style = MaterialTheme.typography.headlineLarge,
-            )
-         }
-         Text(
-            text = "Please pick up your new family member during business hours.",
-            modifier = modifier.padding(6.dp),
-         )
-         Button(
-            onClick = { },
-            modifier = modifier.padding(6.dp)
-         ) {
-            Icon(Icons.Default.Share, null)
-            Text("Share", modifier = modifier.padding(start = 8.dp))
-         }
-      }
-   }
-}
 
