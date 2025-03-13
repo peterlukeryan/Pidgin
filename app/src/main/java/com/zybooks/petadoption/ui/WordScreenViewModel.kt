@@ -39,8 +39,14 @@ class WordScreenViewModel : ViewModel() {
 
     fun getWords(){
         if (selectedLanguage == "Spanish"){
+            if (selectedDifficulty == "Beginner"){
+                words = provider.spanishBeginnerWords.shuffled().take(5)
+            }
             if (selectedDifficulty == "Intermediate"){
                 words = provider.spanishIntermediateWords.shuffled().take(5)
+            }
+            if (selectedDifficulty == "Advanced"){
+                words = provider.spanishAdvancedWords.shuffled().take(5)
             }
         }
     }
