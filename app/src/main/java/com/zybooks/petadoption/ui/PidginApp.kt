@@ -46,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 
@@ -299,7 +300,7 @@ fun WordScreen(viewModel: WordScreenViewModel = viewModel(), onNextClick: () -> 
             WordCard(
                word = word.word,
                onButtonClick = { viewModel.selectWord(word.word)
-                                 viewModel.selectedWords.add(word)
+
                                },
                isSelected = viewModel.checkIsSelected(word.word)
             )
@@ -360,7 +361,7 @@ fun ArchiveScreen(viewModel: WordScreenViewModel = viewModel()) {
                   selectedWord?.word?.let { Text(text = it, fontSize = 24.sp, fontWeight = FontWeight.Bold) }
                   Spacer(modifier = Modifier.height(8.dp))
                   Text(text = selectedWord?.definition ?: "", fontSize = 18.sp)
-
+                  Text(text = selectedWord?.example ?: "", fontSize = 18.sp, fontStyle = FontStyle.Italic, modifier = Modifier.padding(top = 15.dp))
                   // Pushes everything above it up, moving the button to the bottom
                   Spacer(modifier = Modifier.weight(1f))
 

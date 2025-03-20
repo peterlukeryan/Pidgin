@@ -7,25 +7,25 @@ import androidx.lifecycle.viewModelScope
 import com.zybooks.petadoption.data.WordProvider
 
 
-data class Word(val word: String, val definition: String, var selected: Boolean)
+data class Word(val word: String, val definition: String, var selected: Boolean, val example: String?)
 
 class WordScreenViewModel : ViewModel() {
     val provider = WordProvider()
     var selectedLanguage by mutableStateOf("English")
     var selectedDifficulty by mutableStateOf("Beginner")
     var difficultyDropdownExpanded by mutableStateOf(false);
-    var languageDropdownExpanded by mutableStateOf(true);
+    var languageDropdownExpanded by mutableStateOf(false);
     var languages = arrayOf("Spanish", "Italian", "Dutch", "French");
     var difficulties = arrayOf("Beginner", "Intermediate", "Advanced");
 
 
     var words by mutableStateOf(
         listOf(
-            Word("lorem", "A placeholder text often used in design", true),
-            Word("ipsum", "The second word in 'lorem ipsum' placeholder text", false),
-            Word("dolor", "Latin for 'pain' or 'suffering'", false),
-            Word("sit", "Latin for 'let it be' or 'exists'", false),
-            Word("amet", "Latin for 'loved' or 'desired'", false)
+            Word("lorem", "A placeholder text often used in design", true, ""),
+            Word("ipsum", "The second word in 'lorem ipsum' placeholder text", false, ""),
+            Word("dolor", "Latin for 'pain' or 'suffering'", false, ""),
+            Word("sit", "Latin for 'let it be' or 'exists'", false, ""),
+            Word("amet", "Latin for 'loved' or 'desired'", false, "")
         )
     )
 
